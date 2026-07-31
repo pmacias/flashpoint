@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flashpoint"
+version = "0.1.0"
+description = "Early-state wildfire severity triage classification: GBM/EBM on engineered features vs. CNN on early raster stacks, trained on WildfireSpreadTS event trajectories."
+requires-python = ">=3.10"
+dependencies = [
+    "duckdb>=0.10",
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "rasterio>=1.3",
+    "xgboost>=2.0",
+    "interpret>=0.5",      # InterpretML, for EBM
+    "shap>=0.45",
+    "torch>=2.2",
+    "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = ["jupyter", "ipykernel", "pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

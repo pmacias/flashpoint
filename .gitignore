@@ -1,0 +1,15 @@
+# data (kept outside Dropbox now, but harmless as a second safety net)
+data/
+*.duckdb
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+
+# jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
