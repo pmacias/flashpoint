@@ -1,15 +1,19 @@
 """Staging and reading WildfireSpreadTS event data.
 
-WildfireSpreadTS (Gerard et al. 2023) ships as a directory of per-event,
-per-day GeoTIFF stacks, ~50GB total, hosted on Zenodo (DOI 10.5281/zenodo.8006177).
-This module assumes the raw GeoTIFFs have already been downloaded/extracted
-to `raw_data_dir` (see notebooks/01_data_ingestion.ipynb for the fetch step)
-and focuses on turning that directory tree into something the rest of the
-pipeline can enumerate and read lazily.
+WildfireSpreadTS (Gerard et al. 2023) ships as ~50GB of GeoTIFFs on Zenodo
+(DOI 10.5281/zenodo.8006177). We've already converted the full archive to
+HDF5 via the authors' own `CreateHDF5Dataset.py`, so this module reads from
+that HDF5 layout as the primary path -- much faster than re-reading GeoTIFFs
+per event, which was the whole point of the conversion.
 
-We deliberately do NOT load full event stacks into memory here -- only
-metadata (paths, shapes, dates) goes into the manifest that gets written to
-the DuckDB layer. Actual pixel data is read on demand at train time.
+HDF5 layout produced by their conversion script:
+    <hdf5_dir>/<year>/<fire_name>.hdf5
+        dataset "data": shape (n_days, 23, H, W), float32
+        attrs: year, fire_name, img_dates (list of "YYYY-MM-DD" strings), lnglat
+
+We deliberately do NOT load full event stacks into memory at manifest-build
+time -- only metadata (paths, shapes, dates) goes into the DuckDB layer.
+Actual pixel data is read on demand.
 """
 
 from __future__ import annotations
@@ -17,82 +21,104 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+import h5py
 import numpy as np
-import rasterio
 
-
-# Channel names as documented in the WildfireSpreadTS paper (23 channels:
-# active fire / weather / fuel / topography). Fill in exact order once the
-# data is staged and you've confirmed it against the dataset documentation --
-# treat this list as a starting point, not ground truth.
+# Real channel order, confirmed against the WildfireSpreadTS documentation
+# (Supplementary Material, "Composition" section) and cross-checked against
+# FireSpreadDataset.map_channel_index_to_features(only_base=True) in their
+# repo -- this is the RAW GeoTIFF/HDF5 order, before the land-cover one-hot
+# expansion and binary-active-fire-mask addition that their training code
+# adds downstream. 23 channels, 0-indexed.
 CHANNEL_NAMES = [
-    "prev_fire_mask",
-    "wind_speed",
-    "wind_direction",
-    "min_temp",
-    "max_temp",
-    "humidity",
-    "precipitation",
-    "drought_index",
-    "ndvi",
-    "elevation",
-    "slope",
-    "aspect",
-    # ... remaining channels TBD from dataset docs
+    "viirs_band_m11",       # 0
+    "viirs_band_i2",        # 1
+    "viirs_band_i1",        # 2
+    "ndvi",                 # 3
+    "evi2",                 # 4
+    "total_precipitation",  # 5
+    "wind_speed",           # 6
+    "wind_direction",       # 7  -- degrees; encode as sin AND cos (their own
+                             #      code only does sin, see README "Feb 2026" note)
+    "min_temp",              # 8
+    "max_temp",              # 9
+    "energy_release_component",  # 10
+    "specific_humidity",     # 11
+    "slope",                 # 12
+    "aspect",                # 13
+    "elevation",              # 14
+    "pdsi",                   # 15  Palmer Drought Severity Index -- our "cumulative dryness" feature
+    "landcover_class",        # 16  categorical, not yet one-hot expanded
+    "forecast_total_precipitation",  # 17
+    "forecast_wind_speed",           # 18
+    "forecast_wind_direction",       # 19
+    "forecast_temperature",          # 20
+    "forecast_specific_humidity",    # 21
+    "active_fire",            # 22  -- detection HOUR (0-23), 0 = no detection.
+                               #       Binarize with (channel > 0), don't sum raw values.
 ]
 
+ACTIVE_FIRE_CHANNEL_IDX = CHANNEL_NAMES.index("active_fire")
+WIND_DIRECTION_CHANNEL_IDX = CHANNEL_NAMES.index("wind_direction")
+FORECAST_WIND_DIRECTION_CHANNEL_IDX = CHANNEL_NAMES.index("forecast_wind_direction")
+
+# Active fire maps are natively 375m resolution (per the dataset paper);
+# everything else is resampled to match. 375m x 375m in hectares:
+PIXEL_SIDE_M = 375
+PIXEL_AREA_HA = (PIXEL_SIDE_M * PIXEL_SIDE_M) / 10_000
+
 
 @dataclass
-class EventDay:
-    event_id: str
-    day_index: int
-    date: str
-    tif_path: Path
-
-
-@dataclass
-class EventManifestEntry:
-    event_id: str
+class HDF5Event:
+    event_id: str          # fire_name
+    year: int
+    hdf5_path: Path
     n_days: int
-    start_date: str
-    end_date: str
-    days: list[EventDay]
+    img_dates: list[str]
+    lnglat: tuple[float, float]
 
 
-def discover_events(raw_data_dir: Path) -> list[EventManifestEntry]:
-    """Walk the staged WildfireSpreadTS directory and build per-event manifests.
+def discover_hdf5_events(hdf5_dir: Path) -> list[HDF5Event]:
+    """Walk the converted HDF5 directory and build per-event metadata.
 
-    TODO: adapt the glob pattern below once the data is staged locally --
-    this assumes a layout of `raw_data_dir/<event_id>/<day_index>_<date>.tif`,
-    which is a guess pending confirmation against the actual archive layout.
+    Reads only attrs (cheap) -- does not touch the "data" dataset itself.
     """
-    events: list[EventManifestEntry] = []
-    for event_dir in sorted(p for p in raw_data_dir.iterdir() if p.is_dir()):
-        day_files = sorted(event_dir.glob("*.tif"))
-        if not day_files:
-            continue
-        days = [
-            EventDay(
-                event_id=event_dir.name,
-                day_index=i,
-                date=f.stem.split("_", 1)[-1],
-                tif_path=f,
-            )
-            for i, f in enumerate(day_files)
-        ]
-        events.append(
-            EventManifestEntry(
-                event_id=event_dir.name,
-                n_days=len(days),
-                start_date=days[0].date,
-                end_date=days[-1].date,
-                days=days,
-            )
-        )
+    events: list[HDF5Event] = []
+    for year_dir in sorted(p for p in hdf5_dir.iterdir() if p.is_dir()):
+        for h5_path in sorted(year_dir.glob("*.hdf5")):
+            with h5py.File(h5_path, "r") as f:
+                dset = f["data"]
+                events.append(
+                    HDF5Event(
+                        event_id=dset.attrs["fire_name"],
+                        year=int(dset.attrs["year"]),
+                        hdf5_path=h5_path,
+                        n_days=dset.shape[0],
+                        img_dates=list(dset.attrs["img_dates"]),
+                        lnglat=tuple(dset.attrs["lnglat"]),
+                    )
+                )
     return events
 
 
-def read_day_raster(day: EventDay) -> np.ndarray:
-    """Read a single day's multi-channel raster as a (C, H, W) array."""
-    with rasterio.open(day.tif_path) as src:
-        return src.read()
+def read_event_stack(event: HDF5Event) -> np.ndarray:
+    """Read a full event's (n_days, 23, H, W) array."""
+    with h5py.File(event.hdf5_path, "r") as f:
+        return f["data"][:]
+
+
+def read_event_window(event: HDF5Event, day_start: int, day_end: int) -> np.ndarray:
+    """Read only a day-range slice (e.g. the early cutoff window), avoiding a
+    full-event read when only the first day_end days are needed."""
+    with h5py.File(event.hdf5_path, "r") as f:
+        return f["data"][day_start:day_end]
+
+
+def read_channel_all_days(event: HDF5Event, channel_idx: int) -> np.ndarray:
+    """Read a single channel across ALL days of an event -> (n_days, H, W).
+
+    Avoids reading all 23 channels when only one is needed (e.g. active fire,
+    for computing peak extent across the full trajectory).
+    """
+    with h5py.File(event.hdf5_path, "r") as f:
+        return f["data"][:, channel_idx, :, :]
