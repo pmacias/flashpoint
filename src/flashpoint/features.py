@@ -4,6 +4,14 @@ These feed the GBM (XGBoost) and EBM (InterpretML) baselines, and the
 tabular-NN comparison point. Everything here must only look at data from
 the cutoff window -- reaching into later days would leak the label.
 
+Note on missing values: the dataset documentation reports small (~1-1.5%
+per-pixel) missingness in the weather/drought channels used here. Plain
+np.mean()/np.max()/np.min() propagate to NaN if even a single pixel in the
+whole (T, H, W) window is missing -- across a full image that's likely
+enough to poison ~8% of events' aggregates entirely. Use the nan-aware
+variants (np.nanmean etc.) so one missing pixel doesn't wipe out an
+otherwise-valid feature.
+
 Note on wind direction: the dataset's own training code encodes degree
 features with `sin` only, which the authors have flagged (unfixed as of
 this writing) as losing information -- two different directions can map to
@@ -45,15 +53,15 @@ def early_window_stats(early_stack: np.ndarray) -> dict[str, float]:
 
     return {
         "fire_extent_ha": float(last_day_fire_mask.sum()) * PIXEL_AREA_HA,
-        "wind_speed_mean": float(wind_speed.mean()),
-        "wind_speed_max": float(wind_speed.max()),
+        "wind_speed_mean": float(np.nanmean(wind_speed)),
+        "wind_speed_max": float(np.nanmax(wind_speed)),
         # sin+cos encoding (not sin-only) so 0 deg and 360 deg map to the
         # same point instead of losing direction information
-        "wind_direction_sin_mean": float(np.sin(wind_dir_rad).mean()),
-        "wind_direction_cos_mean": float(np.cos(wind_dir_rad).mean()),
-        "max_temp_max": float(max_temp.max()),
-        "min_temp_min": float(min_temp.min()),
-        "humidity_min": float(humidity.min()),
-        "pdsi_mean": float(pdsi.mean()),
-        "erc_mean": float(erc.mean()),
+        "wind_direction_sin_mean": float(np.nanmean(np.sin(wind_dir_rad))),
+        "wind_direction_cos_mean": float(np.nanmean(np.cos(wind_dir_rad))),
+        "max_temp_max": float(np.nanmax(max_temp)),
+        "min_temp_min": float(np.nanmin(min_temp)),
+        "humidity_min": float(np.nanmin(humidity)),
+        "pdsi_mean": float(np.nanmean(pdsi)),
+        "erc_mean": float(np.nanmean(erc)),
     }
