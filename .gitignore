@@ -13,3 +13,6 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# data documentation (two pdfs found elsewhere and my paper notes) 
+data_docs/
