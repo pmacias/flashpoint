@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from flashpoint.data_access import CHANNEL_NAMES, ACTIVE_FIRE_CHANNEL_IDX, PIXEL_AREA_HA
+from flashpoint.data_access import CHANNEL_NAMES, PIXEL_AREA_HA
 from flashpoint.labels import active_fire_mask
 
 

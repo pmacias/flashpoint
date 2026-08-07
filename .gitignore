@@ -11,6 +11,10 @@ __pycache__/
 # jupyter
 .ipynb_checkpoints/
 
+# personal scratch notebook for verifying claims while reading the paper --
+# not part of the tracked pipeline
+notebooks/paper_questions.ipynb
+
 # macOS
 .DS_Store
 

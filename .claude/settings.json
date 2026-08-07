@@ -1,0 +1,5 @@
+{
+  "permissions": {
+    "additionalDirectories": ["~/ml_datasets/flashpoint"]
+  }
+}

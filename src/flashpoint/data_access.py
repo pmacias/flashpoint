@@ -39,7 +39,7 @@ CHANNEL_NAMES = [
     "total_precipitation",  # 5
     "wind_speed",           # 6
     "wind_direction",       # 7  -- degrees; encode as sin AND cos (their own
-                             #      code only does sin, see README "Feb 2026" note)
+                             #      code only does sin, see features.py docstring)
     "min_temp",              # 8
     "max_temp",              # 9
     "energy_release_component",  # 10
@@ -59,8 +59,6 @@ CHANNEL_NAMES = [
 ]
 
 ACTIVE_FIRE_CHANNEL_IDX = CHANNEL_NAMES.index("active_fire")
-WIND_DIRECTION_CHANNEL_IDX = CHANNEL_NAMES.index("wind_direction")
-FORECAST_WIND_DIRECTION_CHANNEL_IDX = CHANNEL_NAMES.index("forecast_wind_direction")
 
 # Active fire maps are natively 375m resolution (per the dataset paper);
 # everything else is resampled to match. 375m x 375m in hectares:
@@ -102,7 +100,12 @@ def discover_hdf5_events(hdf5_dir: Path) -> list[HDF5Event]:
 
 
 def read_event_stack(event: HDF5Event) -> np.ndarray:
-    """Read a full event's (n_days, 23, H, W) array."""
+    """Read a full event's (n_days, 23, H, W) array.
+
+    Convenience function for interactive single-event inspection (e.g. in
+    paper_questions.ipynb) -- the pipeline itself always reads narrower via
+    read_event_window or read_channel_all_days.
+    """
     with h5py.File(event.hdf5_path, "r") as f:
         return f["data"][:]
 
