@@ -65,6 +65,13 @@ ACTIVE_FIRE_CHANNEL_IDX = CHANNEL_NAMES.index("active_fire")
 PIXEL_SIDE_M = 375
 PIXEL_AREA_HA = (PIXEL_SIDE_M * PIXEL_SIDE_M) / 10_000
 
+# Each event is padded with 4 days BEFORE and after its official GlobFire
+# dates (per the dataset paper). Day index 0 of the stored sequence is
+# therefore ~4 days before ignition -- the fire's actual day 1 is at index
+# BUFFER_DAYS. Any "early window" slice must start there, not at 0, or it
+# mostly measures pre-ignition conditions.
+BUFFER_DAYS = 4
+
 
 @dataclass
 class HDF5Event:

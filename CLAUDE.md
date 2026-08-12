@@ -9,9 +9,11 @@ event trajectories, 2018-2021, 23 raster channels at 24hr resolution): given onl
 the first 1-2 days of an active fire, predict a severity tier derived from the
 fire's eventual peak extent. Tabular GBM/EBM baselines now; CNN-on-rasters and an
 interpretability comparison (SHAP vs. EBM vs. Grad-CAM) planned. The README's
-"Plan" section tracks current status — as of this writing, baselines are trained
-but weak (~27-30% on 4 classes vs. 25% chance), and the neural-net arm hasn't
-started.
+"Plan" section tracks current status — as of this writing, the primary reported
+target is BINARY escalation (contained vs. escalates past bottom-quartile peak
+extent; EBM ~0.83 LOYO accuracy / 0.75 macro-F1 vs. 0.73 / 0.42 majority
+baseline), the 4-class quartile tiers are secondary (XGBoost leads there), and
+the neural-net arm hasn't started.
 
 There is no test suite, linter, or build step. Development happens in the
 notebooks (`01` → `02` in dependency order, `03` is exploration), run in the
@@ -71,6 +73,10 @@ Domain corrections already baked into the code — preserve them when extending:
 - **Severity comes from PEAK extent, not last-day extent** — events are padded
   with 4 buffer days and 56.5% of them show zero fire on their literal last day
   (`labels.py` docstring has the full argument).
+- **The early window starts at index `BUFFER_DAYS` (4), not 0** — stored
+  sequences open with 4 pre-ignition padding days, so the fire's actual day 1
+  is index 4 (`data_access.BUFFER_DAYS`). Slicing `[0, cutoff)` measures
+  pre-ignition conditions and silently degrades every downstream result.
 - **Severity bin edges are empirical quartiles** of `max_area_ha`, set in
   notebook 01 after inspecting the distribution — never hardcoded hectare
   thresholds.
@@ -80,7 +86,10 @@ Domain corrections already baked into the code — preserve them when extending:
 - **Wind direction is encoded as sin AND cos** — the dataset authors' own
   sin-only encoding is a known, unfixed information-loss bug; don't copy it.
 - **Train/test splits are year-based, never random** (2019 is a known outlier
-  year); notebook 02 also runs leave-one-year-out for a less noisy estimate.
+  year); every reported result uses leave-one-year-out via
+  `evaluation.leave_one_year_out`, which also reports recall on a designated
+  positive class (escalates-recall matters asymmetrically: a missed escalating
+  fire is worse than a false alarm).
 
 Notebooks do `sys.path.insert(0, "../src")` at the top — keep that line in new
 notebooks so they work even when the editable install is stale.

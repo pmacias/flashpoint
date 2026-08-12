@@ -36,8 +36,10 @@ def _channel(stack: np.ndarray, name: str) -> np.ndarray:
 def early_window_stats(early_stack: np.ndarray) -> dict[str, float]:
     """Compute summary stats over the early cutoff window's raster stack.
 
-    `early_stack` is a (T, 23, H, W) array for days 1..cutoff_day only
-    (e.g. from data_access.read_event_window).
+    `early_stack` is a (T, 23, H, W) array for the fire's actual days
+    1..cutoff_day -- i.e. sliced starting at BUFFER_DAYS, not index 0,
+    since the stored sequences open with ~4 pre-ignition buffer days
+    (e.g. read_event_window(event, BUFFER_DAYS, BUFFER_DAYS + cutoff)).
     """
     wind_speed = _channel(early_stack, "wind_speed")
     wind_dir_deg = _channel(early_stack, "wind_direction")

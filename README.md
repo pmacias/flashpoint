@@ -92,11 +92,19 @@ Prefer reinstalling/upgrading over uninstalling when possible.
 2. **Feature engineering & GBM/EBM baseline** -- early-window tabular
    features (`02_feature_engineering.ipynb`), XGBoost + SHAP, and an
    Explainable Boosting Machine as a fully-transparent second baseline.
-   *Baselines trained; results modest so far (~27-30% accuracy on a
-   4-class problem, vs. 25% chance) -- see notebook for discussion. Next:
-   check for missing-value handling issues, try a leave-one-year-out
-   evaluation instead of a single small held-out year, inspect SHAP/EBM
-   explanations for signal even where accuracy is weak.*
+   *Done through several iterations: topography + vegetation features
+   added (topography helps, ~+5pp; vegetation doesn't), leave-one-year-out
+   is the standard evaluation (`src/flashpoint/evaluation.py`), and the
+   EBM consistently outperforms XGBoost. The primary reported result is
+   now the BINARY escalation target -- contained (bottom-quartile peak
+   extent) vs. escalates -- where the EBM gets LOYO mean accuracy 0.83 /
+   macro-F1 0.75 / escalates-recall 0.95, vs. 0.73 / 0.42 / 1.00 for a
+   majority-class baseline. The 4-class quartile tiers are kept as a
+   secondary result (XGBoost 0.46 accuracy vs. 0.25 chance); adjacent-tier
+   separation at the bin boundaries is where most of that error lives.
+   NB: the early window is indices [BUFFER_DAYS, BUFFER_DAYS+2) of the
+   stored sequence -- the first 4 stored days are pre-ignition padding,
+   and slicing from index 0 (an early bug) cost ~5pp everywhere.*
 3. **Neural net exploration** -- tabular MLP (sanity check vs. GBM) and a
    small CNN on early raster stacks, both predicting the same severity
    label, with Grad-CAM/saliency for the CNN.
@@ -111,6 +119,7 @@ src/flashpoint/
     db.py            # DuckDB schema (events, event_outcomes, early_features)
     labels.py        # severity tier derivation (peak extent across trajectory)
     features.py      # early-window tabular feature engineering
+    evaluation.py    # leave-one-year-out CV used by every reported result
 notebooks/
     01_data_ingestion.ipynb       # DB build + severity labels
     02_feature_engineering.ipynb  # early features + GBM/EBM baselines
