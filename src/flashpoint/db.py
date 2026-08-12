@@ -48,7 +48,17 @@ CREATE TABLE IF NOT EXISTS early_features (
     min_temp_min             DOUBLE,
     humidity_min             DOUBLE,
     pdsi_mean                DOUBLE,
-    erc_mean                 DOUBLE
+    erc_mean                 DOUBLE,
+    slope_mean               DOUBLE,
+    slope_max                DOUBLE,
+    aspect_sin_mean          DOUBLE,
+    aspect_cos_mean          DOUBLE,
+    elevation_mean           DOUBLE,
+    ndvi_mean                DOUBLE,
+    evi2_mean                DOUBLE,
+    viirs_m11_mean           DOUBLE,
+    viirs_i1_mean            DOUBLE,
+    viirs_i2_mean            DOUBLE
 );
 """
 

@@ -47,9 +47,23 @@ def early_window_stats(early_stack: np.ndarray) -> dict[str, float]:
     pdsi = _channel(early_stack, "pdsi")  # cumulative dryness -- the "hysteresis" feature
     erc = _channel(early_stack, "energy_release_component")
 
+    slope = _channel(early_stack, "slope")
+    aspect_deg = _channel(early_stack, "aspect")
+    elevation = _channel(early_stack, "elevation")
+
+    ndvi = _channel(early_stack, "ndvi")
+    evi2 = _channel(early_stack, "evi2")
+    viirs_m11 = _channel(early_stack, "viirs_band_m11")
+    viirs_i1 = _channel(early_stack, "viirs_band_i1")
+    viirs_i2 = _channel(early_stack, "viirs_band_i2")
+
     last_day_fire_mask = active_fire_mask(early_stack[-1])
 
     wind_dir_rad = np.deg2rad(wind_dir_deg)
+    # aspect is a compass direction in degrees, so it gets the same sin+cos
+    # treatment as wind direction (a raw mean of 1 deg and 359 deg would be
+    # 180 deg -- the opposite slope face)
+    aspect_rad = np.deg2rad(aspect_deg)
 
     return {
         "fire_extent_ha": float(last_day_fire_mask.sum()) * PIXEL_AREA_HA,
@@ -64,4 +78,14 @@ def early_window_stats(early_stack: np.ndarray) -> dict[str, float]:
         "humidity_min": float(np.nanmin(humidity)),
         "pdsi_mean": float(np.nanmean(pdsi)),
         "erc_mean": float(np.nanmean(erc)),
+        "slope_mean": float(np.nanmean(slope)),
+        "slope_max": float(np.nanmax(slope)),
+        "aspect_sin_mean": float(np.nanmean(np.sin(aspect_rad))),
+        "aspect_cos_mean": float(np.nanmean(np.cos(aspect_rad))),
+        "elevation_mean": float(np.nanmean(elevation)),
+        "ndvi_mean": float(np.nanmean(ndvi)),
+        "evi2_mean": float(np.nanmean(evi2)),
+        "viirs_m11_mean": float(np.nanmean(viirs_m11)),
+        "viirs_i1_mean": float(np.nanmean(viirs_i1)),
+        "viirs_i2_mean": float(np.nanmean(viirs_i2)),
     }
