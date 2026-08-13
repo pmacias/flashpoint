@@ -34,6 +34,18 @@ never run `conda uninstall` casually (it cascades).
   a pip-only xgboost fails on macOS's missing libomp.
 - **`interpret-core`, not `interpret`**: the full package drags in a
   Dash/gevent dashboard stack that fails to compile without Xcode CLT.
+- **Two environments, split by architecture**: `flashpoint` (x86_64 under
+  Rosetta -- the whole anaconda install is Intel) runs the tabular pipeline
+  (notebooks 01-03); `flashpoint_mps` (native osx-arm64, created with
+  `CONDA_SUBDIR=osx-arm64` inside the same conda install) runs the
+  torch/MPS CNN work (notebook 04+). No MPS-capable torch >= 2.3 exists for
+  the x86_64 env, so never try to install/upgrade torch there. Installs
+  into `flashpoint_mps` need `CONDA_SUBDIR=osx-arm64`,
+  `CONDA_OVERRIDE_OSX=$(sw_vers -productVersion)`, and
+  `--override-channels -c conda-forge` (defaults' arm64 pytorch lacks MPS).
+  Keep it lean: no xgboost/interpret-core/shap/cartopy -- notebook 04 reads
+  tabular comparison numbers from notebook 02's output, not by recomputing.
+  README "Setup" has the full recipe and the reasons.
 
 Raster data lives **outside** the repo at `~/ml_datasets/flashpoint/` (outside
 Dropbox and Time Machine deliberately): original GeoTIFFs plus the HDF5
