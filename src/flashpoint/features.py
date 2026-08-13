@@ -18,6 +18,22 @@ this writing) as losing information -- two different directions can map to
 the same sine value. Since we're building our own feature extraction from
 scratch, we encode wind direction with BOTH sin and cos, which fixes that
 without needing to touch their code.
+
+Note on forecast channels: at day index t the forecast_* channels hold GFS
+forecasts VALID FOR day t+1 but ISSUED BY day t. So the last window day's
+forecast planes describe the first day past the cutoff using only
+information available at the cutoff -- the one legitimate look-ahead in the
+dataset, and the reason these features don't violate the leakage rule.
+Only the last window day is used: earlier days' forecasts describe days
+inside the window, redundant with the observed channels. The *_delta
+features (forecast minus same-day observed) directly encode "conditions
+are forecast to ease/worsen after the window". Units caveat: GFS
+forecast_temperature is stored in CELSIUS (per-event window means span
+~-4 to ~34, verified in notebook 02 Step 2b) while GRIDMET min/max_temp
+are Kelvin, so the forecast temp is converted to Kelvin here before the
+delta. The products still differ (GFS mean-ish temp vs GRIDMET daily max),
+so deltas carry a calibration offset -- fine for tree/EBM models, don't
+read them as physics.
 """
 
 from __future__ import annotations
@@ -49,6 +65,17 @@ def early_window_stats(early_stack: np.ndarray) -> dict[str, float]:
     pdsi = _channel(early_stack, "pdsi")  # cumulative dryness -- the "hysteresis" feature
     erc = _channel(early_stack, "energy_release_component")
 
+    # Forecast channels, LAST window day only (see module docstring): day
+    # index t holds the GFS forecast valid for t+1, so [-1] describes the
+    # first day past the cutoff -- available at cutoff time, not leakage.
+    fc_precip = _channel(early_stack, "forecast_total_precipitation")[-1]
+    fc_wind_speed = _channel(early_stack, "forecast_wind_speed")[-1]
+    fc_wind_dir_rad = np.deg2rad(_channel(early_stack, "forecast_wind_direction")[-1])
+    # GFS forecast temp is Celsius; observed GRIDMET temps are Kelvin --
+    # convert so forecast_temp_delta compares like with like (see docstring)
+    fc_temp = _channel(early_stack, "forecast_temperature")[-1] + 273.15
+    fc_humidity = _channel(early_stack, "forecast_specific_humidity")[-1]
+
     slope = _channel(early_stack, "slope")
     aspect_deg = _channel(early_stack, "aspect")
     elevation = _channel(early_stack, "elevation")
@@ -60,6 +87,13 @@ def early_window_stats(early_stack: np.ndarray) -> dict[str, float]:
     viirs_i2 = _channel(early_stack, "viirs_band_i2")
 
     last_day_fire_mask = active_fire_mask(early_stack[-1])
+
+    # Same-day observed values for the *_delta features: forecast (valid
+    # day t+1) minus observed (day t), so negative temp / positive humidity
+    # deltas mean "conditions forecast to ease after the window".
+    fc_temp_mean = float(np.nanmean(fc_temp))
+    fc_humidity_mean = float(np.nanmean(fc_humidity))
+    fc_wind_speed_mean = float(np.nanmean(fc_wind_speed))
 
     wind_dir_rad = np.deg2rad(wind_dir_deg)
     # aspect is a compass direction in degrees, so it gets the same sin+cos
@@ -90,4 +124,15 @@ def early_window_stats(early_stack: np.ndarray) -> dict[str, float]:
         "viirs_m11_mean": float(np.nanmean(viirs_m11)),
         "viirs_i1_mean": float(np.nanmean(viirs_i1)),
         "viirs_i2_mean": float(np.nanmean(viirs_i2)),
+        "forecast_precip_mean": float(np.nanmean(fc_precip)),
+        "forecast_precip_max": float(np.nanmax(fc_precip)),
+        "forecast_wind_speed_mean": fc_wind_speed_mean,
+        "forecast_wind_speed_max": float(np.nanmax(fc_wind_speed)),
+        "forecast_wind_dir_sin_mean": float(np.nanmean(np.sin(fc_wind_dir_rad))),
+        "forecast_wind_dir_cos_mean": float(np.nanmean(np.cos(fc_wind_dir_rad))),
+        "forecast_temp_mean": fc_temp_mean,
+        "forecast_humidity_mean": fc_humidity_mean,
+        "forecast_temp_delta": fc_temp_mean - float(np.nanmean(max_temp[-1])),
+        "forecast_humidity_delta": fc_humidity_mean - float(np.nanmean(humidity[-1])),
+        "forecast_wind_speed_delta": fc_wind_speed_mean - float(np.nanmean(wind_speed[-1])),
     }

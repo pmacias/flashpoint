@@ -104,7 +104,24 @@ Prefer reinstalling/upgrading over uninstalling when possible.
    separation at the bin boundaries is where most of that error lives.
    NB: the early window is indices [BUFFER_DAYS, BUFFER_DAYS+2) of the
    stored sequence -- the first 4 stored days are pre-ignition padding,
-   and slicing from index 0 (an early bug) cost ~5pp everywhere.*
+   and slicing from index 0 (an early bug) cost ~5pp everywhere.
+   Forecast-channel iteration (targeting the false-alarm problem -- the
+   EBM stands down correctly on only ~half of genuinely contained fires):
+   next-day GFS aggregates + "easing" deltas from the last window day
+   (available at cutoff, not leakage; notebook 02 Steps 2b/9). Outcome is
+   split: for the primary EBM it's a null result (macro-F1 0.754 -> 0.748,
+   escalates-recall 0.953 -> 0.922, false alarms only -4), so the EBM's
+   reported feature set stays base+topo; for XGBoost the same features
+   help across the board (accuracy 0.788 -> 0.822, macro-F1 0.718 -> 0.765,
+   escalates-recall 0.884 -> 0.911, false alarms 75 -> 67 of 155), making
+   xgb+forecast the best false-alarm-limiting variant -- best pooled
+   contained-class F1 (0.645) and macro-F1 (0.771) of any model -- though
+   still below the EBM's 0.95 escalates-recall, which is why the EBM
+   remains primary under the missed-escalation-costs-more doctrine. The
+   columns stay in `early_features` for reuse (e.g. as CNN input planes).
+   Gotcha for anyone touching these channels: raw GFS
+   `forecast_temperature` is stored in CELSIUS while observed GRIDMET
+   temps are Kelvin -- `features.py` converts before differencing.*
 3. **Neural net exploration** -- tabular MLP (sanity check vs. GBM) and a
    small CNN on early raster stacks, both predicting the same severity
    label, with Grad-CAM/saliency for the CNN.

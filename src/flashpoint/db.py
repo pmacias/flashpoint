@@ -58,7 +58,23 @@ CREATE TABLE IF NOT EXISTS early_features (
     evi2_mean                DOUBLE,
     viirs_m11_mean           DOUBLE,
     viirs_i1_mean            DOUBLE,
-    viirs_i2_mean            DOUBLE
+    viirs_i2_mean            DOUBLE,
+    -- Next-day GFS forecast aggregates from the LAST window day: day t's
+    -- forecast channels are valid for day t+1 but issued by day t, so these
+    -- describe the first post-cutoff day using only information available
+    -- at the cutoff (not leakage). Deltas are forecast minus same-day
+    -- observed ("will conditions ease after the window?").
+    forecast_precip_mean        DOUBLE,
+    forecast_precip_max         DOUBLE,
+    forecast_wind_speed_mean    DOUBLE,
+    forecast_wind_speed_max     DOUBLE,
+    forecast_wind_dir_sin_mean  DOUBLE,
+    forecast_wind_dir_cos_mean  DOUBLE,
+    forecast_temp_mean          DOUBLE,
+    forecast_humidity_mean      DOUBLE,
+    forecast_temp_delta         DOUBLE,
+    forecast_humidity_delta     DOUBLE,
+    forecast_wind_speed_delta   DOUBLE
 );
 """
 
