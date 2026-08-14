@@ -1,7 +1,7 @@
 # Status
 
 **Phase 0 and Phase A are complete -- do not touch either conda environment or
-re-run notebook 02. Forecast planes (channels 17-21) are stored in the crop set
+re-run notebook 03. Forecast planes (channels 17-21) are stored in the crop set
 but excluded from the CNN's default training channels -- Phase A found a null
 result for forecast features on the EBM, the CNN's comparison target, so
 there's no reason to spend the CNN's limited capacity there.**
@@ -25,7 +25,7 @@ the CNN (Phase B), plus a required environment fix (Phase 0).
 
 **Yes, do the forecast-channel experiment before the CNN.** But one correction: the
 "false-alarm diagnostic flagged forecast channels (day-3+ weather easing)" conclusion
-**does not exist in the repo**. The only recorded false-alarm diagnostic is notebook 02
+**does not exist in the repo**. The only recorded false-alarm diagnostic is notebook 03
 Step 11 (growth headroom: FP ratio 0.305 vs TN 0.299 — negative result, a growth-trend
 feature won't fix the FPs). "Forecast", "easing", "day-3" appear nowhere in any notebook,
 doc, or commit. What *is* true: the FP exemplar `fire_24462912` had hot/dry early
@@ -125,7 +125,7 @@ reports available.
 ## Phase A — Forecast-channel tabular features (~1 session)
 
 **Files: `src/flashpoint/features.py`, `src/flashpoint/db.py`,
-`notebooks/02_feature_engineering.ipynb`** (three sync points: dict keys ↔ CREATE TABLE
+`notebooks/03_feature_engineering.ipynb`** (three sync points: dict keys ↔ CREATE TABLE
 columns ↔ notebook cell 8's positional insert tuple, all must stay aligned).
 
 1. `features.py` — extend `early_window_stats` with 11 nan-aware features computed from
@@ -184,7 +184,7 @@ README the way vegetation was.
   backward from the logit, gradient-weighted channel sum, ReLU, upsample to 128. No
   captum dependency.
 
-### New notebook `notebooks/04_cnn_severity.ipynb`
+### New notebook `notebooks/05_cnn_severity.ipynb`
 Convention: `sys.path.insert(0, "../src")` first cell, ALL-CAPS constants
 (`CROP_SIZE=128, STORE_SIZE=144, JITTER_PX=8, SEEDS=(0,1,2)`), "## Step N" headers.
 
@@ -197,7 +197,7 @@ Convention: `sys.path.insert(0, "../src")` first cell, ALL-CAPS constants
   FP-count comparison vs the EBM's 78.
 - Step 6: ablations — drop the 2 fire planes (is anything spatial being used, or is it
   extent in disguise?); ± forecast planes.
-- Step 7: Grad-CAM on notebook 02 Step 10's exact TP/TN/FP/FN exemplar event_ids AND the
+- Step 7: Grad-CAM on notebook 03 Step 10's exact TP/TN/FP/FN exemplar event_ids AND the
   CNN's own out-of-fold exemplars — "same events, two lenses" plus each model's own view.
 - Step 8 (the deliverable): quantitative CAM statistics over all 607 events, per
   confusion cell: (a) CAM mass fraction within 5 px (~1.9 km) of early fire pixels vs
@@ -208,12 +208,12 @@ Convention: `sys.path.insert(0, "../src")` first cell, ALL-CAPS constants
 
 ### Bookkeeping
 - `src/flashpoint/__init__.py` module map + README Structure: add `rasters`, `cnn`,
-  notebook 04.
+  notebook 05.
 - README Plan item 3: update with results; mark the tabular-MLP sub-item deferred (adds
   little next to the EBM-vs-CNN comparison).
 
 ## Verification
-- Phase A: notebook 02 runs top-to-bottom; new LOYO/ablation tables print; pooled
+- Phase A: notebook 03 runs top-to-bottom; new LOYO/ablation tables print; pooled
   confusion compared against [[77,78],[18,434]]; escalates-recall floor 0.93 checked.
 - Phase B: param-count assert (< 500k); train-fold-only normalization stats asserted
   (no test-year events in mean/std computation); crop-store attrs match constants before
@@ -223,4 +223,4 @@ Convention: `sys.path.insert(0, "../src")` first cell, ALL-CAPS constants
 
 ## Execution order
 Phase 0 (5 min) → Phase A end-to-end (decides forecast planes' default inclusion) →
-Phase B modules → crop store → notebook 04.
+Phase B modules → crop store → notebook 05.

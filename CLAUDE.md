@@ -16,8 +16,9 @@ baseline), the 4-class quartile tiers are secondary (XGBoost leads there), and
 the neural-net arm hasn't started.
 
 There is no test suite, linter, or build step. Development happens in the
-notebooks (`01` → `02` in dependency order, `03` is exploration), run in the
-`flashpoint` conda env.
+notebooks (`01` → `03` in dependency order; `02` and `04` are
+exploration/diagnostics; `05` is the CNN arm, in `flashpoint_mps`), run in
+the `flashpoint` conda env.
 
 ## Environment
 
@@ -36,15 +37,15 @@ never run `conda uninstall` casually (it cascades).
   Dash/gevent dashboard stack that fails to compile without Xcode CLT.
 - **Two environments, split by architecture**: `flashpoint` (x86_64 under
   Rosetta -- the whole anaconda install is Intel) runs the tabular pipeline
-  (notebooks 01-03); `flashpoint_mps` (native osx-arm64, created with
+  (notebooks 01-04); `flashpoint_mps` (native osx-arm64, created with
   `CONDA_SUBDIR=osx-arm64` inside the same conda install) runs the
-  torch/MPS CNN work (notebook 04+). No MPS-capable torch >= 2.3 exists for
+  torch/MPS CNN work (notebook 05+). No MPS-capable torch >= 2.3 exists for
   the x86_64 env, so never try to install/upgrade torch there. Installs
   into `flashpoint_mps` need `CONDA_SUBDIR=osx-arm64`,
   `CONDA_OVERRIDE_OSX=$(sw_vers -productVersion)`, and
   `--override-channels -c conda-forge` (defaults' arm64 pytorch lacks MPS).
-  Keep it lean: no xgboost/interpret-core/shap/cartopy -- notebook 04 reads
-  tabular comparison numbers from notebook 02's output, not by recomputing.
+  Keep it lean: no xgboost/interpret-core/shap/cartopy -- notebook 05 reads
+  tabular comparison numbers from notebook 03's output, not by recomputing.
   README "Setup" has the full recipe and the reasons.
 
 Raster data lives **outside** the repo at `~/ml_datasets/flashpoint/` (outside

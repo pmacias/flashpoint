@@ -29,7 +29,7 @@ inside the window, redundant with the observed channels. The *_delta
 features (forecast minus same-day observed) directly encode "conditions
 are forecast to ease/worsen after the window". Units caveat: GFS
 forecast_temperature is stored in CELSIUS (per-event window means span
-~-4 to ~34, verified in notebook 02 Step 2b) while GRIDMET min/max_temp
+~-4 to ~34, verified in notebook 03 Step 2b) while GRIDMET min/max_temp
 are Kelvin, so the forecast temp is converted to Kelvin here before the
 delta. The products still differ (GFS mean-ish temp vs GRIDMET daily max),
 so deltas carry a calibration offset -- fine for tree/EBM models, don't

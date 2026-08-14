@@ -91,7 +91,7 @@ machine, and PyTorch stopped shipping macOS x86_64 builds after 2.2.2 --
 there is no MPS-capable torch >= 2.3 for that env, and torch 2.2.2 is
 broken against its numpy 2.x (`torch.from_numpy` raises "Numpy is not
 available"). Rather than destabilize the working tabular env, the
-torch/MPS CNN work (notebook 04+) lives in a separate **native osx-arm64**
+torch/MPS CNN work (notebook 05+) lives in a separate **native osx-arm64**
 env created inside the same conda install via `CONDA_SUBDIR`:
 
 ```bash
@@ -122,10 +122,10 @@ Verify before use: `platform.machine()` must print `arm64`,
 `torch.backends.mps.is_available()` must be True, and a float32
 `torch.from_numpy(...).to("mps")` round-trip must work (MPS has no
 float64 -- keep tensors float32). The env is deliberately lean: **no
-xgboost / interpret-core / shap / cartopy** -- notebook 04 reads the
-committed EBM/XGBoost comparison numbers from notebook 02's output instead
+xgboost / interpret-core / shap / cartopy** -- notebook 05 reads the
+committed EBM/XGBoost comparison numbers from notebook 03's output instead
 of recomputing them, so the gevent/Xcode-CLT install pain never enters
-this env. Notebooks 01-03 keep using the `flashpoint` kernel; notebook 04+
+this env. Notebooks 01-04 keep using the `flashpoint` kernel; notebook 05+
 uses `flashpoint_mps (arm64/MPS)`.
 
 ## Plan
@@ -135,7 +135,7 @@ uses `flashpoint_mps (arm64/MPS)`.
    (peak active-fire extent, not last-day extent -- see
    `01_data_ingestion.ipynb` for why). *Done.*
 2. **Feature engineering & GBM/EBM baseline** -- early-window tabular
-   features (`02_feature_engineering.ipynb`), XGBoost + SHAP, and an
+   features (`03_feature_engineering.ipynb`), XGBoost + SHAP, and an
    Explainable Boosting Machine as a fully-transparent second baseline.
    *Done through several iterations: topography + vegetation features
    added (topography helps, ~+5pp; vegetation doesn't), leave-one-year-out
@@ -153,7 +153,7 @@ uses `flashpoint_mps (arm64/MPS)`.
    Forecast-channel iteration (targeting the false-alarm problem -- the
    EBM stands down correctly on only ~half of genuinely contained fires):
    next-day GFS aggregates + "easing" deltas from the last window day
-   (available at cutoff, not leakage; notebook 02 Steps 2b/9). Outcome is
+   (available at cutoff, not leakage; notebook 03 Steps 2b/9). Outcome is
    split: for the primary EBM it's a null result (macro-F1 0.754 -> 0.748,
    escalates-recall 0.953 -> 0.922, false alarms only -4), so the EBM's
    reported feature set stays base+topo; for XGBoost the same features
@@ -182,8 +182,13 @@ src/flashpoint/
     labels.py        # severity tier derivation (peak extent across trajectory)
     features.py      # early-window tabular feature engineering
     evaluation.py    # leave-one-year-out CV used by every reported result
+    rasters.py       # fixed-size early-window raster crops for the CNN arm (Phase B)
+    cnn.py           # small CNN + Grad-CAM on early-window raster crops (Phase B)
 notebooks/
     01_data_ingestion.ipynb       # DB build + severity labels
-    02_feature_engineering.ipynb  # early features + GBM/EBM baselines
+    02_early_exploration.ipynb    # trajectories, geography, active-fire evolution
+    03_feature_engineering.ipynb  # early features + GBM/EBM baselines
+    04_feature_diagnostics.ipynb  # early-feature distributions, correlations, clustering
+    05_cnn_severity.ipynb         # CNN + interpretability comparison (Phase B)
 data/                # local cache (duckdb file) -- gitignored
 ```
