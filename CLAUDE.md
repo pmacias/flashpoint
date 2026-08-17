@@ -15,8 +15,10 @@ extent; EBM ~0.83 LOYO accuracy / 0.75 macro-F1 vs. 0.73 / 0.42 majority
 baseline), the 4-class quartile tiers are secondary (XGBoost leads there), and
 the neural-net arm hasn't started.
 
-There is no test suite, linter, or build step. Development happens in the
-notebooks (`01` → `03` in dependency order; `02` and `04` are
+There is no linter or build step. A pytest suite (`tests/`) covers the pure,
+deterministic functions in `labels.py` and `features.py` -- run with
+`pytest tests/` in the `flashpoint` env. Most development still happens in
+the notebooks (`01` → `03` in dependency order; `02` and `04` are
 exploration/diagnostics; `05` is the CNN arm, in `flashpoint_mps`), run in
 the `flashpoint` conda env.
 

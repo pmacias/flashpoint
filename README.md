@@ -190,5 +190,14 @@ notebooks/
     03_feature_engineering.ipynb  # early features + GBM/EBM baselines
     04_feature_diagnostics.ipynb  # early-feature distributions, correlations, clustering
     05_cnn_severity.ipynb         # CNN + interpretability comparison (Phase B)
+    06_results_summary.ipynb      # capstone: model comparison, peak-vs-cumulative extent, narrative
+tests/                # pytest suite for the pure functions in labels.py / features.py
 data/                # local cache (duckdb file) -- gitignored
 ```
+
+Run the test suite with `pytest tests/` in the `flashpoint` env (`pytest`
+is already a dev dependency, no separate install needed). It covers the
+deterministic, no-I/O functions only -- severity binning, active-fire
+mask/peak-extent derivation, and the early-window feature aggregation
+(NaN-robustness, wind/aspect sin+cos encoding) -- against small synthetic
+arrays, not real project data.
