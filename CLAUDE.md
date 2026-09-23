@@ -7,13 +7,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Early-state wildfire severity classification on WildfireSpreadTS (607 US wildfire
 event trajectories, 2018-2021, 23 raster channels at 24hr resolution): given only
 the first 1-2 days of an active fire, predict a severity tier derived from the
-fire's eventual peak extent. Tabular GBM/EBM baselines now; CNN-on-rasters and an
-interpretability comparison (SHAP vs. EBM vs. Grad-CAM) planned. The README's
+fire's eventual peak extent. Tabular GBM/EBM baselines, a CNN on early raster
+crops, and an interpretability comparison (SHAP vs. EBM vs. Grad-CAM). The README's
 "Plan" section tracks current status — as of this writing, the primary reported
 target is BINARY escalation (contained vs. escalates past bottom-quartile peak
 extent; EBM ~0.83 LOYO accuracy / 0.75 macro-F1 vs. 0.73 / 0.42 majority
 baseline), the 4-class quartile tiers are secondary (XGBoost leads there), and
-the neural-net arm hasn't started.
+the CNN + Grad-CAM arm is done (notebooks 05-06; at EBM-comparable recall the
+CNN gives more false alarms, so the EBM stays primary). The tabular MLP was
+deferred (`docs/cnn_plan.md`).
 
 There is no linter or build step. A pytest suite (`tests/`) covers the pure,
 deterministic functions in `labels.py` and `features.py` -- run with
@@ -24,10 +26,10 @@ the `flashpoint` conda env.
 
 ## Environment
 
-Follow README.md "Setup" exactly when creating or repairing the env — the
-sequence is deliberate, worked out after ABI-mismatch pain, and the README
-documents the recovery procedure. Don't improvise package fixes; in particular
-never run `conda uninstall` casually (it cascades).
+Follow README.md "Setup" exactly when creating the env — the sequence is
+deliberate, worked out after ABI-mismatch pain — and SETUP.md when repairing
+it (it documents the recovery procedure). Don't improvise package fixes; in
+particular never run `conda uninstall` casually (it cascades).
 
 ### Environment gotchas
 
@@ -48,7 +50,7 @@ never run `conda uninstall` casually (it cascades).
   `--override-channels -c conda-forge` (defaults' arm64 pytorch lacks MPS).
   Keep it lean: no xgboost/interpret-core/shap/cartopy -- notebook 05 reads
   tabular comparison numbers from notebook 03's output, not by recomputing.
-  README "Setup" has the full recipe and the reasons.
+  SETUP.md has the full recipe and the reasons.
 
 Raster data lives **outside** the repo at `~/ml_datasets/flashpoint/` (outside
 Dropbox and Time Machine deliberately): original GeoTIFFs plus the HDF5
@@ -108,3 +110,20 @@ Domain corrections already baked into the code — preserve them when extending:
 
 Notebooks do `sys.path.insert(0, "../src")` at the top — keep that line in new
 notebooks so they work even when the editable install is stale.
+
+## Known issues
+
+- **GFS forecast features' valid time is unverified.** `features.py`,
+  `docs/cnn_plan.md`, and notebook 03 say the `forecast_*` plane at day index
+  t is valid for day t+1, but none of them cite a source. The authors' export
+  code (`DataPreparation/satellites/FirePred.py` in
+  SebastianGer/WildfireSpreadTSCreateDataset) filters `NOAA/GFS0P25` to the
+  00 UTC run of the stored day, forecast hours 01-24. That points to the last
+  window day itself, not the day after the cutoff. The filter is also a
+  string comparison on Earth Engine's `system:index`, so if the forecast-hour
+  field there has a different digit count, it may select a different window.
+  Leakage is not in question: the run is issued at 00 UTC on the last window
+  day, so every forecast hour it contains is known at prediction time. But
+  the "easing delta" descriptions (forecast minus same-day observed = conditions
+  after the window) depend on the unverified t+1 reading. Don't describe these
+  features as "next-day" until the valid time is confirmed.
