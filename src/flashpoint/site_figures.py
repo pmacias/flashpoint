@@ -431,7 +431,10 @@ def plot_driver_figure(rows: list[dict], driver_title: str, driver_unit: str,
              color=ACCENT, fontweight="bold")
     fig.text(div_x + 0.012, top, "→  what happened", ha="left", va="center", fontsize=11,
              color=SITE_TEXT, fontweight="bold")
-    fig.text(0.5, 0.965, title, ha="center", va="top", fontsize=15, fontweight="bold")
+    # Title centered over the panel grid (Days 1-2 left edge to footprint right edge).
+    fig.canvas.draw()
+    grid_x = (axes[0][0].get_position().x0 + axes[0][2].get_position().x1) / 2
+    fig.text(grid_x, 0.965, title, ha="center", va="top", fontsize=15, fontweight="bold")
 
     # One scale bar per scale, bottom row.
     _scale_bar(axes[-1][0], zooms[-1][2], _nice_km(zooms[-1][2]), SITE_TEXT)
