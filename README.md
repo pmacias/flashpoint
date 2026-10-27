@@ -62,6 +62,21 @@ cumulative footprint instead of peak extent. Peak extent is a defensible
 severity basis, not the only one (`notebooks/06_results_summary.ipynb`,
 Step 2).
 
+### Showcase figure
+
+![Two fires that looked alike after two days: one escalated in drier fuel](figures/site/flashpoint_growth.png)
+
+Two illustrative fires that looked alike over their first two days of
+satellite detections; the one that escalated was burning in much drier
+fuel (ERC 83 vs. 51), a feature the model weights heavily overall. The
+model sees only the box-average value, not the map, and the pair was
+chosen by rules fixed in advance.
+
+`notebooks/07_site_figures.ipynb` builds this figure (PDF copy alongside)
+and records the selection rules, the pass counts at each rule, and why
+the first candidate pair was dropped. It reads full trajectories to show
+outcomes, so it is visualization only and never feeds the model.
+
 ## Data
 
 [WildfireSpreadTS](https://doi.org/10.5281/zenodo.8006177) (Gerard et al.,
