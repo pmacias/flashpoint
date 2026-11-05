@@ -18,6 +18,7 @@ dependencies = [
     "shap>=0.45",
     "torch>=2.2",
     "scikit-learn>=1.4",
+    "scipy>=1.7",  # binomtest.proportion_ci, used directly by evaluation.py
     "matplotlib>=3.8",
     "cartopy>=0.22",  # basemap plotting -- install via conda-forge, not pip (GEOS/PROJ/shapely deps)
     "tqdm",

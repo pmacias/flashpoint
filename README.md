@@ -52,6 +52,14 @@ pooled, so it differs slightly from the per-year mean in the table (EBM
 `notebooks/05_cnn_severity.ipynb`. When its threshold is lowered to bring
 recall near the EBM's, it produces more false alarms than the EBM.
 
+Pooled out-of-fold, the EBM beats XGBoost on the same features on overall
+skill: Brier 0.128 vs. 0.141, against 0.190 for a constant base-rate forecast
+(Brier skill score 0.329 vs. 0.257). It is also better calibrated, judged from
+the reliability diagram and REL (0.0035 vs. 0.0069). REL accounts for only about a
+quarter of the Brier gap at five bins; the rest is resolution net of within-bin
+terms, and that split shifts with bin count. XGBoost with forecast features
+and the CNN were not evaluated (`notebooks/06_results_summary.ipynb`, Step 3).
+
 ### Limitations
 
 Severity labels come from peak single-day fire extent. Peak extent and
@@ -61,6 +69,11 @@ events (26.2%) would land in a different severity tier if labeled by
 cumulative footprint instead of peak extent. Peak extent is a defensible
 severity basis, not the only one (`notebooks/06_results_summary.ipynb`,
 Step 2).
+
+Probability quality varies by year. 2019 is the weakest held-out year (Brier
+0.231 EBM, 0.241 XGBoost), about level with a constant forecast at that year's
+own escalation rate (0.241), so beating the base-rate forecast is a pooled
+result, not one that holds in every year.
 
 ### Showcase figure
 
@@ -133,7 +146,8 @@ install, and macOS-specific pitfalls.
    escalates-recall. XGBoost with GFS forecast features has the highest
    macro-F1, and XGBoost leads on the secondary 4-class target. Adding the
    forecast features did not help the EBM (macro-F1 0.754 -> 0.748), so its
-   reported feature set is unchanged. Numbers are in [Results](#results);
+   reported feature set is unchanged. On the same features the EBM also has
+   the better Brier score and calibration. Numbers are in [Results](#results);
    the full iteration history is in notebook 03.
 3. **Neural net exploration** -- a small CNN on early raster stacks,
    predicting the same binary label, with Grad-CAM for the CNN. *Done*
@@ -152,7 +166,7 @@ src/flashpoint/
     db.py            # DuckDB schema (events, event_outcomes, early_features)
     labels.py        # severity tier derivation (peak extent across trajectory)
     features.py      # early-window tabular feature engineering
-    evaluation.py    # leave-one-year-out CV used by every reported result
+    evaluation.py    # leave-one-year-out CV used by every reported result, calibration, Brier decomposition
     rasters.py       # fixed-size early-window raster crops for the CNN arm
     cnn.py           # small CNN + Grad-CAM on early-window raster crops
 notebooks/
@@ -161,14 +175,15 @@ notebooks/
     03_feature_engineering.ipynb  # early features + GBM/EBM baselines
     04_feature_diagnostics.ipynb  # early-feature distributions, correlations, clustering
     05_cnn_severity.ipynb         # CNN + interpretability comparison
-    06_results_summary.ipynb      # capstone: model comparison, peak-vs-cumulative extent, narrative
-tests/                # pytest suite for the pure functions in labels.py / features.py
+    06_results_summary.ipynb      # capstone: model comparison, peak-vs-cumulative extent, calibration, narrative
+tests/                # pytest suite for the pure functions in labels.py / features.py / evaluation.py
 data/                # local cache (duckdb file) -- gitignored
 ```
 
 Run the test suite with `pytest tests/` in the `flashpoint` env (`pytest`
 is already a dev dependency, no separate install needed). It covers the
 deterministic, no-I/O functions only -- severity binning, active-fire
-mask/peak-extent derivation, and the early-window feature aggregation
-(NaN-robustness, wind/aspect sin+cos encoding) -- against small synthetic
-arrays, not real project data.
+mask/peak-extent derivation, the early-window feature aggregation
+(NaN-robustness, wind/aspect sin+cos encoding), and the evaluation helpers
+(LOYO out-of-fold probabilities, calibration curve, Brier decomposition) --
+against small synthetic data, not real project data.

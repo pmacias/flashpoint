@@ -15,11 +15,17 @@ extent; EBM ~0.83 LOYO accuracy / 0.75 macro-F1 vs. 0.73 / 0.42 majority
 baseline), the 4-class quartile tiers are secondary (XGBoost leads there), and
 the CNN + Grad-CAM arm is done (notebooks 05-06; at EBM-comparable recall the
 CNN gives more false alarms, so the EBM stays primary). The tabular MLP was
-deferred (`docs/cnn_plan.md`).
+deferred (`docs/cnn_plan.md`). Pooled out-of-fold, the EBM beats XGBoost on the
+same features on overall skill: Brier 0.128 vs. 0.141, against 0.190 for a
+constant base-rate forecast (Brier skill score 0.329 vs. 0.257). It is also
+better calibrated, judged from the reliability diagram and REL (0.0035 vs.
+0.0069). REL accounts for only about a quarter of the Brier gap at five bins; the rest
+is resolution net of within-bin terms, and that split shifts with bin count.
+XGBoost with forecast features and the CNN were not evaluated.
 
 There is no linter or build step. A pytest suite (`tests/`) covers the pure,
-deterministic functions in `labels.py` and `features.py` -- run with
-`pytest tests/` in the `flashpoint` env. Most development still happens in
+deterministic functions in `labels.py`, `features.py`, and `evaluation.py` --
+run with `pytest tests/` in the `flashpoint` env. Most development still happens in
 the notebooks (`01` → `03` in dependency order; `02` and `04` are
 exploration/diagnostics; `05` is the CNN arm, in `flashpoint_mps`), run in
 the `flashpoint` conda env.
@@ -110,6 +116,26 @@ Domain corrections already baked into the code — preserve them when extending:
 
 Notebooks do `sys.path.insert(0, "../src")` at the top — keep that line in new
 notebooks so they work even when the editable install is stale.
+
+## Calibration
+
+Calibration is computed in `src/flashpoint/evaluation.py` and reported in
+notebook 06, Step 3. That step refits notebook 03's binary EBM and XGBoost on the
+same LOYO folds, and an assert ties the refits to the Step 1 confusion matrices.
+`leave_one_year_out(..., positive_class=1, return_predictions=True)` supplies
+the out-of-fold `y_prob`.
+
+- `calibration_curve_data(y_true, y_prob, n_bins=5, confidence=0.95)` returns the
+  tuple `(curve, brier)`: a DataFrame with one row per quantile bin (bin, n,
+  prob_min, prob_max, mean_pred, obs_rate, ci_lower, ci_upper; Wilson interval)
+  and the Brier score as a float. Callers unpack two values, so keep it a 2-tuple.
+- `brier_decomposition(y_true, y_prob, n_bins=5)` returns a dict with brier, rel,
+  res, unc, wbv, wbc and bss, on the same bins. brier = rel - res + unc + wbv - wbc
+  holds exactly (Stephenson, Coelho & Jolliffe 2008), and bss = 1 - brier / unc.
+
+Judge calibration from the reliability diagram and REL, never from the Brier gap,
+which also reflects discrimination. REL and RES depend on the bin count, so don't
+quote the five-bin REL/RES split as fixed.
 
 ## Known issues
 
